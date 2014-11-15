@@ -9,6 +9,7 @@ build: illusoryTLS
 illusoryTLS:
 	cabal sandbox init
 	cabal sandbox add-source ${NETWORK_SIMPLE_TLS}
+	mkdir -p ./src
 	cp ./${NETWORK_SIMPLE_TLS}/examples/https-client.hs src/
 	cp ./${NETWORK_SIMPLE_TLS}/examples/tls-echo.hs src/
 	cp ./${NETWORK_SIMPLE_TLS}/LICENSE src/
