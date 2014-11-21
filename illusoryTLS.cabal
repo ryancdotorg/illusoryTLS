@@ -3,13 +3,13 @@
 
 name:                illusoryTLS
 version:             0.1.0.0
-synopsis:            Illusory TLS Asymmetric Backdoor: Auguste Dupin Meets the Kleptographer Y
+synopsis:            Illusory TLS
 -- description:         
 homepage:            https://github.com/secYOUre/illusoryTLS
 license:             BSD3
 license-file:        LICENSE
 author:              Alfonso De Gregorio
-maintainer:          adg@secYOUre.com
+maintainer:          alfonso.degregorio@gmail.com
 -- copyright:           
 category:            Game
 build-type:          Simple
