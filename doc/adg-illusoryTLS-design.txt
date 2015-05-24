@@ -9,7 +9,41 @@ Crypto Contest
 Category: Add a Backdoor
 
 
-0. Abstract -- Backdoor is Data; Data is Backdoor
+0. Introduction
+
+Today's Web PKI is fragile. We are, as a security community, witnessing 
+with increasing frequency incidents, vulnerabilities, dramas, and 
+failures of the infrastructure we daily entrust our business upon.
+
+- China Internet Network Information Center (CNNIC), 2015
+- Lenovo, 2015
+- National Informatics Centre of India, 2014
+- ANSSI, 2013
+- Trustwave, 2012
+- Türktrust, 2011-2013
+- DigiNotar, 2011
+- Comodo, 2011
+- Verisign, 2010
+
+In the aggregate, these and other missteps, malicious or otherwise,
+allowed the impersonation of a number of high profile websites and
+granted to the impersonating entities the ability to spy on a
+sizable number of unsuspecting site users. 
+
+This is already unfortunate. If "No silent failure" is the
+pinnacle goal of security engineering [DG2], undetected impersonation
+is no measure of success in our engineering effort. As if that were not
+enough cause for concern, now we are discussing about building
+cryptographic backdoors.
+
+This is a timely topic often debated as matter for a government to
+legislate on. This work approaches it as a space that some entities 
+might have practically explored regardless of the policy framework. 
+[BULLRUN] If somebody in the belief, however questionable,
+that a "technically secure backdoor with a golden key" is possible
+had built one, would we be able to notice if our communications were
+being exploited?
+
 The common view is that backdoors are symmetric in nature and require 
 the presence of malicious logic in the target system code base (i.e., 
 everyone with knowledge about the internals of the backdoor can exploit
@@ -36,18 +70,38 @@ security artifacts this work:
      with a secretly embedded backdoor in the certificate store would
      render the entire TLS security fictional. In fact, the current 
      practice of universal implicit cross-certification makes the whole
-     PKI as weak as its weakest link [AA14, Gu11].
+     PKI as weak as its weakest link [PG, AA14, Gu11].
 
 Hence, as long as the implementations of RSA -- or, more generally,
 algorithms vulnerable to this class of attacks -- used by trusted
-entities (e.g., CAs) remain not auditable by relying parties, and
+entities (e.g., CAs) cannot be audited by relying parties, and
 whenever the backdoor designer is a threat to the target users, the
-security provided by illusoryTLS (i.e., none whatsoever) is not any
-different from the security of systems relying upon TLS for origin
-authentication, confidentiality, and message integrity guarantees.
+assurance provided by illusoryTLS (i.e., none whatsoever) is not any
+different from the assurance provided by systems relying upon TLS for 
+origin authentication, confidentiality, and message integrity guarantees.
 
 
 1. illusoryTLS
+illusoryTLS is an instance of the Young and Yung elliptic curve
+asymmetric backdoor in RSA key generation.
+The security outcome is the worst possible outcome, because the
+backdoor completely perverts the security guarantees provided by
+the TLS protocol, allowing the attacker to impersonate the endpoints
+(i.e., authentication failure), tamper with their messages
+(i.e., integrity erosion), and actively eavesdrop their communications
+(i.e., confidentiality loss).
+
+The design choices for this backdoor reflect the following threat model.
+The backdoor designer can:
+0. "insert vulnerabilities into commercial encryption systems,
+IT systems, networks and endpoint communications devices used by targets".
+1. "influence policies, standards and specifications for commercial
+public key technologies". [BULLRUN]
+2. interfere with the supply-chain. [EFF]
+3. disregard everything about policy. [RJA]
+4. or she is simply in the position to build the security module
+used by the Certification Authority for generating the key material.
+
 illusoryTLS consists of three modules: a. a HTTPS client; b. a TLS
  server; c. a certificate store. The code is part of network-simple-tls
 -- an Haskell library for simple network sockets usage patterns using 
@@ -80,12 +134,53 @@ the designer, the ability to factor with ease the said modulus.
 No backdoor was slipped into the cryptographic credentials issued to
 the communicating endpoints.
 
+3. Related Work
+The backdoor hidden in illusoryTLS implements a security notion that
+is twenty years old. Adam Young and Moti Yung introduced the notion 
+of secretly embedded trapdoor with universal protection (SETUP) at 
+Crypto '96 [YY96]. The backdoor hidden in illusoryTLS implements this 
+security notion. More specifically, it is an instance of the 
+Young and Yung elliptic curve asymmetric backdoor in RSA key 
+generation [YY]. The work by Adam Young and Moti Yung expands on the 
+research they published in the proceedings of Selected Areas in 
+Cryptography 2005 [YY05].  The same authors present a working 
+implementation of their attack at http://www.cryptovirology.com/.
 
-3. The Impact and the Implications
-In turn, the backdoor designer can use the private-key recovered by 
-factoring the CA public modulus to break the TLS security guarantees at
-will, exposing the relying parties to a variety of attacks. They range 
-from impersonation (i.e.., authentication failure), to message 
+
+4. Security Properties
+illusoryTLS has some noteworthy properties.
+NOBUS (Nobody But Us): [A14, Go14] The exploitation requires access 
+to resources not embedded in the backdoor itself. In this case the 
+secret resource is an elliptic-curve private key. Hence, the 
+vulnerability can be exploited by the backdoor designer and by whoever 
+gains access to the backdoor elliptic-curve private-key or to the 
+associated key-recovery system. Hence, it is opportune to ask ourself: 
+Is it possible to forbid an enemy intelligence organization from gaining 
+access to a private key? Those of us who believe that this is possible
+should be inclined to regard secure backdoors as also technical possibility. 
+And those of us who believe that all measures to prevent disclosure
+of the private-key will be circumvented should be inclined to regard 
+backdoors as inherently insecure.
+
+Indistinguishability: As long as a computational hardness assumption
+called Elliptic-Curve Decision Diffie-Hellman (ECDDH) holds, the
+backdoored key pairs appear to all probabilistic polynomial time
+algorithms like genuine RSA key pairs. Therefore black-box access
+to the key-generator does not allow detection.
+
+Forward Secrecy: If a reverse-engineer breaches the key-generator,
+then the previously stolen information remains confidential (secure
+against reverse-engineering).
+
+Reusability: The backdoor can be used multiple times and against
+multiple targets.
+
+
+5. The Impact and the Implications
+The backdoor designer can use the private-key recovered by factoring 
+the CA public modulus to break the TLS security guarantees at will, 
+exposing the relying parties to a variety of attacks. They range 
+from impersonation (i.e., authentication failure), to message 
 tampering (i.e., integrity erosion), to active eavesdropping of 
 encrypted communications (i.e., confidentiality loss), whenever the 
 attacker mounts a MITM attack.
@@ -98,66 +193,226 @@ Hence, the attacker does not need to purloin code or data from the work
 environment (i.e., the attack works without any need to tamper with the
 communicating endpoints).
 
-As long as the implementations of RSA -- or, more generally, algorithms
-vulnerable to this class of attacks -- used by trusted entities (e.g.,
-Certification Authorities) remain not auditable by relying parties
-(e.g., X.509 end-entities), any trust-anchor for the same trusted
-entities (e.g., root certificate) is to be regarded as a backdoor.
+In the Web X.509 PKI the security impact of such backdoor would extend 
+further; the presence of a single CA certificate with a secretly embedded 
+backdoor in the certificate store renders the entire TLS security 
+fictional. In fact, the current practice of universal implicit 
+cross-certification makes the whole X.509 PKI as weak as its weakest link.
 
-That is to say that as long as the implementations of RSA used by CAs
-remain not auditable by relying parties, and whenever a hypothetical
-backdoor designer is a threat to the target users, the security
-provided by illusoryTLS (i.e., none whatsoever) is not any different
-from the security of systems relying on TLS for origin authentication,
-confidentiality, and message integrity guarantees.
+To see why this is the case, it is necessary to look at how 
+cross-certification and trust relationships among CAs are managed 
+in theory and in practice.
 
-It is also worth to note that even the presence of a single CA
-certificate with a secretly embedded trapdoor in the certificate store
-would render the entire TLS security fictional. In fact, the practice
-of universal implicit cross-certification makes the whole PKI as weak
-as its weakest link [AA14, Gu11].
+"Cross certification enables entities in one public key infrastructure
+(PKI) to trust entities in another PKI. This mutual trust relationship
+[should be] typically supported by a cross-certification agreement
+between the certification authorities (CAs) in each PKI. The agreement
+establishes the responsibilities and liability of each party." [MS]
 
+"[An explicit] mutual trust relationship between two CAs requires
+that each CA issue a certificate to the other to establish the
+relationship in both directions. The path of trust is not [hierarchical]
+(neither of the governing CAs is subordinate to the other) although
+the separate PKIs may be certificate hierarchies. After two CAs have
+established and specified the terms of trust and issued certificates
+to each other, entities within the separate PKIs can interact subject
+to the policies specified in the certificates." [MS] But this is just
+in theory.
 
-4. Related Work
-Adam Young and Moti Yung introduced the notion of secretly embedded 
-trapdoor with universal protection (SETUP) at Crypto '96 [YY96]. The 
-backdoor hidden in illusoryTLS implements this security notion. More 
-specifically, it is an instance of the Young and Yung elliptic curve 
-asymmetric backdoor in RSA key generation [YY]. The work by Adam Young
-and Moti Yung expands on the research they published in the proceedings
-of Selected Areas in Cryptography 2005 [YY05].  The same authors 
-present a working implementation of their attack at 
-http://www.cryptovirology.com/.
+In practice, "most current PKI software employs a form of implicit
+cross-certification in which all root CAs are equally trusted, which
+is equivalent to unbounded cross-certification among all CAs. This
+means that, for example, any certificate can be trivially replaced
+by a masquerader's certificate from another CA, since both CAs are
+equally trusted... With the implicit universal cross-certification
+that exists in this environment, the security of any certificate is
+reduced to that of the least trustworthy CA, who can issue a bogus
+certificate to usurp the legitimate one, at the same level of trust."
+[PG] The bogus certificates issued to Egypt-based MCS holdings and
+installed in a man-in-the-middle proxy [MCS] or the Superfish MitM
+adware [SF] are just the most recent examples of exploitation
+for this obvious vulnerability.
 
+That is to say that universal implicit cross-certification, or the
+lack of constraints on the signer's authority, is to security, or
+the absence of unmitigatable surprises [DG2], what ethylene is to
+fruit rotting: it makes the whole PKI as weak as its weakest link.
+And a CA certificate with a secretly embedded backdoor with the
+promise of exclusive exploitation may attract multiple attackers.
+With multiple attackers going after a technical opportunity, the
+Nobody But Us paradigm would quickly turn into an
+Everybody Else But Me concern for those left behind. The race
+to exploitation would self-reinforce, leading to a me-too effect.
+A scenario that would negate any meaningful security whatsoever.
 
-5. Nobody But Us: Security Properties
-As remarked in [YY], SETUP attacks have some remarkable properties: 
-  A. Asymmetry: The complete code for the backdoor does not enable
-     anyone except the designer to exploit the backdoor; and 
-  B  Indistinguishability: The backdoored key pairs appear to all 
-     probabilistic polynomial time algorithms like genuine (i.e., 
-     not backdoored) RSA key-pairs.
+Therefore, when dealing with this class of attacks in the context
+of X.509 Web PKIs, it might be not sufficient to avoid outsourcing
+the key generation. It becomes essential also to have assurance
+about the security of each implementation of vulnerable
+key-generation algorithms employed by trusted credential issuers.
 
-It is worth to note how a conventional backdoor are symmetric in
-nature: the backdoor can be exploited by anyone with access to its
-code. Conversely, an asymmetric backdoor, even if published, can 
-only be exploited by the entity who planted it, assuming but not
-conceding that its designer can enforce effective access control
-on the backdoor (elliptic-cruve) private-key and on the key-recovery
-system.
+At this time, Mac OS X Yosemite has 211 CA certificates installed.
+[OSX] A similar number of certificates is present in the Firefox,
+Google Chrome, and Microsoft Windows certificate stores.
+Have we sufficient assurance about the hundreds CA certificates
+we daily entrust our business upon?
 
-As such, an elliptic curve asymmetric backdoor provides an
-instantiation of the concept of 'Nobody But Us' (i.e., keys only we
-have) [A14, Go14].
+The threats posed by a malicious implementer are not convincingly
+mitigated by current IT product security certification.
+The CA/Browser Forum requires publicly trusted certificates to be
+issued in compliance with the European Standard EN 319 411-3.
+According to the standard, the CA key generation shall be carried
+out within a device that meets the requirements identified by some
+approved protection profiles. The CEN Workshop Agreement 14167
+Part 2, 3, and 4 are three of those protection profiles. The
+assurance level for these protection profiles is EAL4 augmented.
+The augmentation results from product adherence to three additional
+requirements ADV_IMP.2, AVA_CCA.1, and AVA_VLA.4. These are focused
+on assessing the presence of vulnerabilities in the
+Target of Evaluation (TOE) and on guaranteeing that the
+implementation representation is an accurate and complete
+instantiation of the TOE security functional (TSF) requirements.
+Special emphasis is placed on identifying covert channels and on
+estimating their capacity --- which is relevant, because SETUP attacks
+makes use of the key-generation as a covert channel for itself.
+However, the certification process requires the developer the
+performance of the vulnerability assessment and documentation tasks.
+Of course, this conflicts with our threat model. The evaluator is
+left with the documentation and the implementation representation
+provided in fulfillment of the certification. Arguably, at the
+required Evaluation Assurance Level the assessment may fail to
+rule out the presence of backdoors in the key generation. Formal
+methods are in fact required only at the two highest levels (EAL6
+and EAL7). And the level of detail of the implementation representation
+may render backdoor detection unlikely (e.g., HDL at design time,
+netlist at fabrication time as candidate representations).
 
-The second property makes the backdoor highly robust against
-reverse-engineering. As a matter of fact, the key pairs are
-computationally indistinguishable from key-pairs with no secrely
-embedded backdoor (under the ECDDH assumption).
+Hence, the key takeaway is the following: as long as the implementations 
+of RSA --- or, more generally, algorithms vulnerable to this class of 
+attacks --- used by trusted entities (e.g., Certification Authorities) 
+cannot be audited by relying parties (e.g., X.509 end-entities), any 
+trust-anchor for the same trusted entities (e.g., root certificate) 
+is to be regarded as a potential backdoor.
+
+That is to say that as long as the implementation of algorithms
+adopted by CAs and vulnerable to this class of backdoors cannot be
+audited by relying parties, the assurance provided by illusoryTLS
+(i.e., none whatsoever) is not any different from the assurance provided
+by systems relying upon TLS and RSA certificates for origin 
+authentication, confidentiality, and message integrity guarantees.
+
+A number of mitigation exist, from key pinning (if used properly) [HPKP] 
+to Certificate Transparency, to Dane, to Tack, and to proper
+explicit cross-certification. But none of them is widely deployed, yet.
 
 
 6. Backdoor Embedding Algorithm
-The backdoor embedding algorithm is as described in Chapter 10 of [YY].
+The subtleness of a backdoor planted in a cryptographic credential
+resides in the absence of malicious logic in the systems whose
+security it erodes. This is the reason why there is nothing anything
+amiss in the illusoryTLS code base. Admittedly funnier, though, is 
+the backdoor embedding algorithm. 
+
+The backdoor embedding algorithm used for illusoryTLS is as described 
+in Chapter 10 of [YY].
+
+The rest of this section will introduce a novel way to embed an 
+elliptic curve asymmetric backdoor into a RSA modulus.
+
+Few weeks after the submission of illusoryTLS to the Underhanded 
+Crypto Contest [UCC], Ryan Castellucci published his attack variant 
+on GitHub [RC].
+
+The idea is to:
+0. embed a Curve25519 public-key into the key-generator,
+1. generate an ephemeral Curve25519 key at random,
+2. compute a shared secret using Elliptic Curve Diffie-Hellmann,
+3. use the shared secret to seed a cryptographically secure
+pseudo-random number generator (CSPRNG) based on AES run in CTR mode,
+4. generate a normal RSA key using the seeded CSPRNG,
+5. replace 32-bytes of the generated modulus with the ephemeral
+Curve25519 public-key,
+6. use the original prime factors to compute two new primes leading
+to a new modulus embedding the ephemeral public-key
+7. output the RSA key
+
+To recover the target private key the attacker:
+0. extracts the ephemeral Curve25519 public-key from the target modulus,
+1. computes the shared secret via Elliptic Curve Diffie-Hellmann and
+using the private-key associated to the public-key embedded in the
+key-generator,
+2. uses the shared secret to seed the cryptographically secure
+pseudo-random number generator (CSPRNG) based on AES run in CTR mode,
+3. generates a normal RSA key using the seeded CSPRNG,
+4. replaces 32-bytes of the generated modulus with the ephemeral
+Curve25519 public-key,
+5. uses the original prime factors to compute two new primes leading
+to the target modulus embedding the ephemeral public-key,
+6. output the recovered RSA key.
+
+Although the idea is nice, the key pairs generated using this algorithm
+fall short in terms of indistinguishability. In fact it is easy
+to tell backdoored certificates apart from genuine RSA certificate
+using only black-box access.
+
+The attack embeds a public-key into an RSA modulus. Elliptic curve
+public-keys are points on the curve. And elliptic-curve points are
+easily distinguished from uniform random strings. Hence, a security
+evaluator could check if the coordinates encoded using the candidate
+32-byte substrings of the modulus satisfy the elliptic curve equation.
+Can the backdoor be repaired? How?
+
+If the backdoor designer could make the elliptic curve points 
+indistinguishable from random strings, then the backdoor 
+indistinguishability would be retained.
+Designed by Daniel J. Bernstein et al. with the goal to make
+anti-censorship protocols undetectable, Elligator [E] provides 
+an encoding for points on a single curve as strings indistinguishable 
+from uniform random strings.
+
+All cyber security technology is inherently dual use. This long-held
+and well-sustained belief [DG] is corroborated by Elligator.
+Undetectability of curve points, just like any and all cyber security
+tools, can be used for good or ill; for censorship-circumvention or
+for surveillance.
+
+Yet, it is possible to positively contribute to the discussion and 
+practice of information security by walking the fine line between 
+offense and defense. In this spirit, what follows are: 
+- a backdoor embedding algorithm based on Elligator, and 
+- the associated key-recovery algorithm.
+This backdoor embedding algorithm makes sure that the backdoored 
+RSA key-pairs are indistinguishable from genuine RSA key-pairs.
+
+The key-generation proceeds as follows:
+0. embed a Curve25519 public-key into the key-generator,
+1. generate an ephemeral Curve25519 key at random and the
+associated uniform representative string,
+2. compute a shared secret using Elliptic Curve Diffie-Hellmann,
+3. use the shared secret to seed a cryptographically secure
+pseudo-random number generator (CSPRNG) based on AES run in CTR mode,
+4. generate a normal RSA key using the seeded CSPRNG,
+5. replace 32-bytes of the generated modulus with the representative
+string associated to the ephemeral Curve25519 public-key,
+6. use the original prime factors to compute two new primes leading
+to a new modulus embedding the uniform representative string,
+7. output the RSA key.
+
+To recover the target private key the attacker:
+0. extracts the representative string from the target modulus,
+1. maps the representative string to the candidate ephemeral Curve25519
+public-key,
+2. computes the shared secret via Elliptic Curve Diffie-Hellmann and
+using the private-key associated to the public-key embedded in the
+key-generator,
+3. uses the shared secret to seed the cryptographically secure
+pseudo-random number generator (CSPRNG) based on AES run in CTR mode,
+4. generates a normal RSA key using the seeded CSPRNG,
+5. replaces 32-bytes of the generated modulus with the representative
+string found in the target modulus,
+6. uses the original prime factors to compute two new primes leading
+to the target modulus embedding the uniform representative string,
+7. output the recovered RSA key.
 
 
 7. References
@@ -170,6 +425,29 @@ The backdoor embedding algorithm is as described in Chapter 10 of [YY].
        Security Collapse in the HTTPS Market,
        https://dl.acm.org/citation.cfm?id=2673311
 
+[BULLRUN] COMPUTER NETWORK OPERATIONS. SIGINT ENABLING.
+          https://www.eff.org/files/2014/04/09/
+          20130905-guard-sigint_enabling.pdf
+
+[DG]  Geer Jr. D. E., (2014); Cybersecurity as Realpolitik.
+      http://geer.tinho.net/geer.blackhat.6viii14.txt
+
+[DG2] Geer Jr. D. E., (2014); Security of Things, Cambridge
+      http://geer.tinho.net/geer.secot.7v14.txt
+
+[E]   Bernstein D. J., Hamburg M., Krasnova A., and Lange T. (2013);
+      Elligator, http://elligator.cr.yp.to/
+
+[EFF] 20150117-Spiegel-Supply-chain Interdiction.
+      Stealthy Techniques Can Crack Some of SIGINT's Hardest Targets
+      https://www.eff.org/document/
+      20150117-spiegel-supply-chain-interdiction-stealthy-techniques-
+      can-crack-some-sigints
+
+[HPKP] Evans, C. et al (2015); Public Key Pinning Extension for HTTP,
+       RFC 7469, IETF
+
+
 [Go14] Jack Goldsmith, 'Cyber Paradox: Every Offensive Weapon is a
        (Potential) Chink in Our Defense — and Vice Versa'
        http://www.lawfareblog.com/2014/04/
@@ -181,12 +459,39 @@ The backdoor embedding algorithm is as described in Chapter 10 of [YY].
        http://comments.gmane.org/
        gmane.comp.security.cryptography.randombit/1215
 
-  [MC] Adam L. Young and Moti M. Yung, 'Malicious Cryptography,
-       Exposing Cryptovirology', 2004, ISBN: 0-7645-4975-8, J. Wiley
+ [MC] Adam L. Young and Moti M. Yung, 'Malicious Cryptography,
+      Exposing Cryptovirology', 2004, ISBN: 0-7645-4975-8, J. Wiley
+
+[MCS] Langley A. (2015); Maintaining digital certificate security
+      http://googleonlinesecurity.blogspot.it/2015/03/
+      maintaining-digital-certificate-security.html
+
+[MS]  Microsoft, Cross Certification,
+      https://msdn.microsoft.com/en-us/library/windows/desktop/
+      bb540800(v=vs.85).aspx
+
 
  [NST] Renzo Carbonara, network-simple-tls, Haskell library for simple
        network sockets usage patterns using TLS security,
        https://github.com/k0001/network-simple-tls
+
+[OSX] List of available trusted root certificates in OS X Yosemite
+      https://support.apple.com/en-us/HT202858
+
+[PG]  Gutmann, P. (2002); PKI: It's Not Dead, Just Resting.
+      Computer (35,8), IEEE, 0018-9162
+      https://www.cs.auckland.ac.nz/~pgut001/pubs/notdead.pdf
+
+[RC]  Castellucci, R. (2015); rsabd.py
+      https://gist.github.com/ryancdotorg/18235723e926be0afbdd
+
+[SF]  Bonneau J. and Eckersley P. and Hoffman-Andrews J. (2015);
+      Lenovo Is Breaking HTTPS Security on its Recent Laptops
+      https://www.eff.org/deeplinks/2015/02/
+      further-evidence-lenovo-breaking-https-security-its-laptops
+
+[UCC] Underhanded Crypto Contest. https://underhandedcrypto.com/
+
 
   [YY] Adam L. Young and Moti M. Yung, 'An Elliptic Curve Asymmetric
        Backdoor in OpenSSL RSA Key Generation', Advances in 
