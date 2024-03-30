@@ -320,7 +320,7 @@ The rest of this section will introduce a novel way to embed an
 elliptic curve asymmetric backdoor into a RSA modulus.
 
 Few weeks after the submission of illusoryTLS to the Underhanded 
-Crypto Contest [UCC], Ryan Castellucci published his attack variant 
+Crypto Contest [UCC], Ryan Castellucci published their attack variant 
 on GitHub [RC].
 
 The idea is to:
